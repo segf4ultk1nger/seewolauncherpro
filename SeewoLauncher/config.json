@@ -1,0 +1,24 @@
+{
+  "Apps": [
+    { "Name": "希沃白板", "Path": "notepad.exe", "Arguments": "", "Icon": "EN" },
+    { "Name": "希沃白板", "Path": "calc.exe", "Arguments": "", "Icon": "EN" },
+    { "Name": "希沃白板", "Path": "notepad.exe", "Arguments": "", "Icon": "EN" },
+    { "Name": "希沃白板", "Path": "calc.exe", "Arguments": "", "Icon": "EN" },
+    { "Name": "希沃白板", "Path": "notepad.exe", "Arguments": "", "Icon": "EN" },
+    { "Name": "希沃白板", "Path": "calc.exe", "Arguments": "", "Icon": "EN" },
+    { "Name": "希沃白板", "Path": "notepad.exe", "Arguments": "", "Icon": "EN" },
+    { "Name": "希沃白板", "Path": "calc.exe", "Arguments": "", "Icon": "EN" },
+    { "Name": "希沃白板", "Path": "notepad.exe", "Arguments": "", "Icon": "EN" },
+    { "Name": "希沃白板", "Path": "calc.exe", "Arguments": "", "Icon": "EN" }
+  ],
+  "Tools": [
+    { "Name": "工具1", "Path": "cmd.exe", "Icon": "Clock" },
+    { "Name": "工具1", "Path": "cmd.exe", "Icon": "Clock" },
+    { "Name": "工具1", "Path": "cmd.exe", "Icon": "Clock" },
+    { "Name": "工具1", "Path": "cmd.exe", "Icon": "Clock" },
+    { "Name": "工具1", "Path": "cmd.exe", "Icon": "Clock" },
+    { "Name": "工具1", "Path": "cmd.exe", "Icon": "Clock" },
+    { "Name": "工具1", "Path": "cmd.exe", "Icon": "Clock" },
+    { "Name": "工具1", "Path": "cmd.exe", "Icon": "Clock" }
+  ]
+}
