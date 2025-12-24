@@ -21,17 +21,16 @@ using static CSharpMarkup.Wpf.Helpers;
 using System.Windows.Input;
 using System.Runtime.CompilerServices;
 
-// Static imports for Colors and Brushes
-using static System.Windows.Media.Colors;
-using static System.Windows.Media.Brushes;
-
-// Using aliases
 using Window = System.Windows.Window;
 using Application = System.Windows.Application;
 using Binding = System.Windows.Data.Binding;
+using RelativeSource = System.Windows.Data.RelativeSource;
+using RelativeSourceMode = System.Windows.Data.RelativeSourceMode;
 using Orientation = System.Windows.Controls.Orientation;
 using TextAlignment = System.Windows.TextAlignment;
-using CPoint = System.Windows.Point; // Avoid conflict if any
+using Brushes = System.Windows.Media.Brushes;
+using Color = System.Windows.Media.Color;
+using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 
 namespace SeewoLauncher
 {
@@ -99,13 +98,13 @@ namespace SeewoLauncher
     public interface IConfigService
     {
         AppConfig CurrentConfig { get; }
-        event Action<AppConfig> ConfigChanged;
+        event Action<AppConfig>? ConfigChanged;
         void LoadConfig();
     }
 
     public interface IDeviceMonitor
     {
-        event Action<List<DiskItem>> DisksChanged;
+        event Action<List<DiskItem>>? DisksChanged;
         void StartMonitoring();
         void OpenDisk(string path);
         void EjectDisk(string path);
@@ -124,9 +123,9 @@ namespace SeewoLauncher
     public class ConfigService : IConfigService
     {
         private const string ConfigFile = "config.json";
-        private FileSystemWatcher _watcher;
+        private FileSystemWatcher? _watcher;
         public AppConfig CurrentConfig { get; private set; } = new();
-        public event Action<AppConfig> ConfigChanged;
+        public event Action<AppConfig>? ConfigChanged;
 
         public ConfigService()
         {
@@ -188,8 +187,8 @@ namespace SeewoLauncher
     [RegisterSingleton]
     public class DeviceMonitor : IDeviceMonitor
     {
-        public event Action<List<DiskItem>> DisksChanged;
-        private ManagementEventWatcher _watcher;
+        public event Action<List<DiskItem>>? DisksChanged;
+        private ManagementEventWatcher? _watcher;
 
         public void StartMonitoring()
         {
@@ -360,7 +359,7 @@ namespace SeewoLauncher
             WindowStyle = WindowStyle.None;
             
             var bgImage = new BitmapImage(new Uri(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ui.png"), UriKind.RelativeOrAbsolute));
-            Background = new ImageBrush(bgImage) { Stretch = Stretch.UniformToFill };
+            Background = new ImageBrush(bgImage) { Stretch = System.Windows.Media.Stretch.UniformToFill };
 
             Content = Grid(
                 Columns(
@@ -368,8 +367,9 @@ namespace SeewoLauncher
                     400   
                 ),
 
+                // Right Panel
                 Border(
-                    // Changed VStack to Grid to allow "Spacer" behavior via RowDefinitions
+                    // Inner Layout
                     Grid(
                         Rows(
                             Auto, // Header
@@ -378,7 +378,7 @@ namespace SeewoLauncher
                             Auto, // U-Disk List
                             Auto, // Apps Header
                             Auto, // Apps List
-                            Star, // Spacer (Pushes bottom content down)
+                            Star, // Spacer
                             Auto  // Bottom Actions
                         ),
 
@@ -387,11 +387,11 @@ namespace SeewoLauncher
                             Rows(Auto, Auto),
                             HStack(
                                 TextBlock().FontSize(24).FontWeight(FontWeights.Bold).Foreground(Brushes.White)
-                                    .Bind(TextBlock.TextProperty, nameof(vm.TimeText)),
-                                TextBlock("大雨 16°C - 23°C").Foreground(Brushes.White).Margin(10,0,0,0) // Corrected Margin logic
+                                    .Bind(TextBlock.TextProperty, new Binding(nameof(vm.TimeText))),
+                                TextBlock("大雨 16°C - 23°C").Foreground(Brushes.White).Margin(10,0,0,0)
                             ),
                             TextBlock().Grid_Row(1).FontSize(12).Foreground(Brushes.Gray)
-                                .Bind(TextBlock.TextProperty, nameof(vm.DateText))
+                                .Bind(TextBlock.TextProperty, new Binding(nameof(vm.DateText)))
                         ).Grid_Row(0).Margin(0, 0, 0, 20),
 
                         // Tools Header
@@ -400,7 +400,7 @@ namespace SeewoLauncher
                         // Tools List
                         ItemsControl()
                             .Grid_Row(2)
-                            .Bind(ItemsControl.ItemsSourceProperty, nameof(vm.Tools))
+                            .Bind(ItemsControl.ItemsSourceProperty, new Binding(nameof(vm.Tools)))
                             .ItemsPanel(
                                 ItemsPanelTemplate(() => WrapPanel().IsItemsHost(true))
                             )
@@ -409,43 +409,45 @@ namespace SeewoLauncher
                                     VStack(
                                         TextBlock("🕒").FontSize(24).Center(),
                                         TextBlock().FontSize(10).Foreground(Brushes.Gray).Center()
-                                            .Bind(TextBlock.TextProperty, "Name")
+                                            .Bind(TextBlock.TextProperty, new Binding("Name"))
                                     )
                                 )
                                 .Background(Brushes.Transparent)
                                 .BorderThickness(0)
                                 .Margin(5)
-                                .Command(Binding("DataContext.LaunchAppCommand", RelativeSource: RelativeSource(typeof(Window))))
-                                .CommandParameter(Binding("."))
+                                .Command(new Binding("DataContext.LaunchAppCommand") { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor) { AncestorType = typeof(Window) } })
+                                .CommandParameter(new Binding("."))
                             )),
 
                         // U-Disk Monitor Section
                         ItemsControl()
                             .Grid_Row(3)
-                            .Bind(ItemsControl.ItemsSourceProperty, nameof(vm.Disks))
+                            .Bind(ItemsControl.ItemsSourceProperty, new Binding(nameof(vm.Disks)))
                             .ItemTemplate(DataTemplate(() =>
-                                Grid(
-                                    Columns(50, Star, 80),
-                                    // Icon
-                                    TextBlock("💾").FontSize(20).Center().Foreground(Brushes.White),
-                                    
-                                    // Info
-                                    VStack(
-                                        TextBlock().Foreground(Brushes.White).Bind(TextBlock.TextProperty, "Label"),
-                                        TextBlock().Foreground(Brushes.Gray).FontSize(10)
-                                            .Bind(TextBlock.TextProperty, binding => binding.Path("FreeSpace").StringFormat("剩余 {0}"))
-                                    ).Grid_Column(1).VCenter(),
+                                Border(
+                                    Grid(
+                                        Columns(50, Star, 80),
+                                        // Icon
+                                        TextBlock("💾").FontSize(20).Center().Foreground(Brushes.White),
+                                        
+                                        // Info
+                                        VStack(
+                                            TextBlock().Foreground(Brushes.White).Bind(TextBlock.TextProperty, new Binding("Label")),
+                                            TextBlock().Foreground(Brushes.Gray).FontSize(10)
+                                                .Bind(TextBlock.TextProperty, new Binding("FreeSpace") { StringFormat = "剩余 {0}" })
+                                        ).Grid_Column(1).VCenter(),
 
-                                    // Actions
-                                    HStack(
-                                        Button("打开").FontSize(10).Padding(5,2)
-                                            .Command(Binding("DataContext.OpenDiskCommand", RelativeSource: RelativeSource(typeof(Window))))
-                                            .CommandParameter(Binding("DriveLetter"))
-                                    ).Grid_Column(2).Center()
+                                        // Actions
+                                        HStack(
+                                            Button("打开").FontSize(10).Padding(5,2)
+                                                .Command(new Binding("DataContext.OpenDiskCommand") { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor) { AncestorType = typeof(Window) } })
+                                                .CommandParameter(new Binding("DriveLetter"))
+                                        ).Grid_Column(2).Center()
+                                    )
                                 )
                                 .Margin(0, 10, 0, 10)
                                 .Background(new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)))
-                                .CornerRadius(8)
+                                .CornerRadius(8) // Applied to Border now
                             )),
 
                         // Apps Header
@@ -454,7 +456,7 @@ namespace SeewoLauncher
                         // Apps List
                         ItemsControl()
                             .Grid_Row(5)
-                            .Bind(ItemsControl.ItemsSourceProperty, nameof(vm.Apps))
+                            .Bind(ItemsControl.ItemsSourceProperty, new Binding(nameof(vm.Apps)))
                             .ItemsPanel(
                                 ItemsPanelTemplate(() => WrapPanel().IsItemsHost(true))
                             )
@@ -470,18 +472,18 @@ namespace SeewoLauncher
                                         .Margin(0,0,0,5),
                                         
                                         TextBlock().Foreground(Brushes.White).FontSize(10).Center().TextWrapping(TextWrapping.Wrap)
-                                            .Bind(TextBlock.TextProperty, "Name")
+                                            .Bind(TextBlock.TextProperty, new Binding("Name"))
                                     )
                                 )
                                 .Width(60).Height(70)
                                 .Background(Brushes.Transparent)
                                 .BorderThickness(0)
                                 .Margin(5)
-                                .Command(Binding("DataContext.LaunchAppCommand", RelativeSource: RelativeSource(typeof(Window))))
-                                .CommandParameter(Binding("."))
+                                .Command(new Binding("DataContext.LaunchAppCommand") { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor) { AncestorType = typeof(Window) } })
+                                .CommandParameter(new Binding("."))
                             )),
                         
-                        // Spacer (Handled by Row Definition Star)
+                        // Spacer (Row 6 is Star)
 
                         // Bottom Actions
                         DockPanel(
@@ -495,11 +497,12 @@ namespace SeewoLauncher
                                 .Invoke(b => b.Click += (s, e) => Application.Current.Shutdown())
                         ).Grid_Row(7)
                     )
-                    .Padding(20)
-                    .Background(new SolidColorBrush(Color.FromArgb(200, 30, 30, 30)))
-                    .CornerRadius(20, 0, 0, 20)
-                    .Margin(0, 40, 0, 40)
-                ).Grid_Column(1)
+                )
+                .Padding(20) // Border has Padding
+                .Background(new SolidColorBrush(Color.FromArgb(200, 30, 30, 30)))
+                .CornerRadius(20, 0, 0, 20)
+                .Margin(0, 40, 0, 40)
+                .Grid_Column(1)
             );
         }
     }
