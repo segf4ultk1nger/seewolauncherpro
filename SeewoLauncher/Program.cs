@@ -25,6 +25,9 @@ using System.Runtime.CompilerServices;
 using Window = System.Windows.Window;
 using Application = System.Windows.Application;
 using Binding = System.Windows.Data.Binding;
+using BitmapImage = System.Windows.Media.Imaging.BitmapImage;
+using Bold = CSharpMarkup.Wpf.Bold;
+using ImageBrush = System.Windows.Media.ImageBrush;
 using Orientation = System.Windows.Controls.Orientation;
 using TextAlignment = System.Windows.TextAlignment;
 
@@ -378,9 +381,8 @@ namespace SeewoLauncher
                         Grid(
                             Rows(Auto, Auto),
                             HStack(
-                                TextBlock(vm.TimeText).FontSize(24).Bold().Foreground(White)
+                                TextBlock(vm.TimeText).FontSize(24).FontWeight(FontWeights.Bold).Foreground(Colors.White)
                                     .Bind(TextBlock.TextProperty, nameof(vm.TimeText)),
-                                Spacer(),
                                 TextBlock("大雨 16°C - 23°C").Foreground(White).Margin(0,0,10,0)
                             ),
                             TextBlock(vm.DateText).Row(1).FontSize(12).Foreground(Gray)
