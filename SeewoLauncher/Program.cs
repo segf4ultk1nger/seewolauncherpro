@@ -8,28 +8,30 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls; // Keep for some base types if needed, but CSharpMarkup handles most
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Management;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Injectio.Attributes; // Real Injectio Attributes
-using CSharpMarkup.Wpf; // CSharpMarkup
-using static CSharpMarkup.Wpf.Helpers; // Helpers like HStack, VStack
+using Injectio.Attributes;
+using CSharpMarkup.Wpf;
+using static CSharpMarkup.Wpf.Helpers;
 using System.Windows.Input;
 using System.Runtime.CompilerServices;
 
-// Using aliases to avoid conflicts
+// Static imports for Colors and Brushes
+using static System.Windows.Media.Colors;
+using static System.Windows.Media.Brushes;
+
+// Using aliases
 using Window = System.Windows.Window;
 using Application = System.Windows.Application;
 using Binding = System.Windows.Data.Binding;
-using BitmapImage = System.Windows.Media.Imaging.BitmapImage;
-using Bold = CSharpMarkup.Wpf.Bold;
-using ImageBrush = System.Windows.Media.ImageBrush;
 using Orientation = System.Windows.Controls.Orientation;
 using TextAlignment = System.Windows.TextAlignment;
+using CPoint = System.Windows.Point; // Avoid conflict if any
 
 namespace SeewoLauncher
 {
@@ -42,10 +44,7 @@ namespace SeewoLauncher
             var host = Host.CreateDefaultBuilder(args)
                 .ConfigureServices((context, services) =>
                 {
-                    // Real Injectio Generated Method
-                    // Assuming the assembly name is SeewoLauncher, Injectio generates AddSeewoLauncher()
                     services.AddSeewoLauncher();
-
                     services.AddSingleton<App>();
                     services.AddSingleton<MainWindow>();
                 })
@@ -95,8 +94,6 @@ namespace SeewoLauncher
         public string TotalSize { get; set; } = "";
         public string FreeSpace { get; set; } = "";
         public double UsagePercentage { get; set; }
-        // Helper for C# Markup binding
-        public ICommand OpenCommand { get; set; }
     }
 
     public interface IConfigService
@@ -259,18 +256,18 @@ namespace SeewoLauncher
 
     public abstract class ViewModelBase : INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged([CallerMemberName] string name = null) 
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? name = null) 
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
     public class RelayCommand : ICommand
     {
-        private readonly Action<object> _execute;
-        public RelayCommand(Action<object> execute) => _execute = execute;
-        public bool CanExecute(object parameter) => true;
-        public void Execute(object parameter) => _execute(parameter);
-        public event EventHandler CanExecuteChanged;
+        private readonly Action<object?> _execute;
+        public RelayCommand(Action<object?> execute) => _execute = execute;
+        public bool CanExecute(object? parameter) => true;
+        public void Execute(object? parameter) => _execute(parameter);
+        public event EventHandler? CanExecuteChanged;
     }
 
     [RegisterSingleton]
@@ -288,10 +285,10 @@ namespace SeewoLauncher
         public ICommand OpenDiskCommand { get; }
         public ICommand EjectDiskCommand { get; }
 
-        private string _dateText;
+        private string _dateText = "";
         public string DateText { get => _dateText; set { _dateText = value; OnPropertyChanged(); } }
         
-        private string _timeText;
+        private string _timeText = "";
         public string TimeText { get => _timeText; set { _timeText = value; OnPropertyChanged(); } }
 
         public MainViewModel(IConfigService configService, IDeviceMonitor deviceMonitor, ILauncherService launcherService)
@@ -306,8 +303,8 @@ namespace SeewoLauncher
                 if (o is ToolItem tool) _launcherService.LaunchApp(tool.Path, "");
             });
 
-            OpenDiskCommand = new RelayCommand(o => _deviceMonitor.OpenDisk(o.ToString()));
-            EjectDiskCommand = new RelayCommand(o => _deviceMonitor.EjectDisk(o.ToString()));
+            OpenDiskCommand = new RelayCommand(o => _deviceMonitor.OpenDisk(o?.ToString() ?? ""));
+            EjectDiskCommand = new RelayCommand(o => _deviceMonitor.EjectDisk(o?.ToString() ?? ""));
 
             _configService.ConfigChanged += OnConfigChanged;
             _deviceMonitor.DisksChanged += OnDisksChanged;
@@ -357,84 +354,94 @@ namespace SeewoLauncher
     {
         public MainWindow(MainViewModel vm)
         {
-            // Basic Window Setup
             DataContext = vm;
             Title = "Seewo Launcher";
             WindowState = WindowState.Maximized;
             WindowStyle = WindowStyle.None;
             
-            // Background Image
             var bgImage = new BitmapImage(new Uri(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ui.png"), UriKind.RelativeOrAbsolute));
             Background = new ImageBrush(bgImage) { Stretch = Stretch.UniformToFill };
 
-            // C# Markup UI
             Content = Grid(
                 Columns(
-                    Star, // Spacer Left
-                    400   // Right Panel
+                    Star, 
+                    400   
                 ),
 
-                // Right Panel with Glass Effect
                 Border(
-                    VStack(
+                    // Changed VStack to Grid to allow "Spacer" behavior via RowDefinitions
+                    Grid(
+                        Rows(
+                            Auto, // Header
+                            Auto, // Tools Header
+                            Auto, // Tools List
+                            Auto, // U-Disk List
+                            Auto, // Apps Header
+                            Auto, // Apps List
+                            Star, // Spacer (Pushes bottom content down)
+                            Auto  // Bottom Actions
+                        ),
+
                         // Header: Weather & Time
                         Grid(
                             Rows(Auto, Auto),
                             HStack(
-                                TextBlock(vm.TimeText).FontSize(24).FontWeight(FontWeights.Bold).Foreground(Colors.White)
+                                TextBlock().FontSize(24).FontWeight(FontWeights.Bold).Foreground(Brushes.White)
                                     .Bind(TextBlock.TextProperty, nameof(vm.TimeText)),
-                                TextBlock("大雨 16°C - 23°C").Foreground(White).Margin(0,0,10,0)
+                                TextBlock("大雨 16°C - 23°C").Foreground(Brushes.White).Margin(10,0,0,0) // Corrected Margin logic
                             ),
-                            TextBlock(vm.DateText).Row(1).FontSize(12).Foreground(Gray)
+                            TextBlock().Grid_Row(1).FontSize(12).Foreground(Brushes.Gray)
                                 .Bind(TextBlock.TextProperty, nameof(vm.DateText))
-                        ).Margin(0, 0, 0, 20),
+                        ).Grid_Row(0).Margin(0, 0, 0, 20),
 
                         // Tools Header
-                        TextBlock("常用工具").Foreground(White).Margin(0, 20, 0, 10),
+                        TextBlock("常用工具").Grid_Row(1).Foreground(Brushes.White).Margin(0, 20, 0, 10),
 
                         // Tools List
                         ItemsControl()
+                            .Grid_Row(2)
                             .Bind(ItemsControl.ItemsSourceProperty, nameof(vm.Tools))
                             .ItemsPanel(
                                 ItemsPanelTemplate(() => WrapPanel().IsItemsHost(true))
                             )
-                            .ItemTemplate(DataTemplate<ToolItem>(tool => 
+                            .ItemTemplate(DataTemplate(() => 
                                 Button(
                                     VStack(
                                         TextBlock("🕒").FontSize(24).Center(),
-                                        TextBlock().FontSize(10).Foreground(Gray).Center()
-                                            .Bind(TextBlock.TextProperty, nameof(tool.Name))
+                                        TextBlock().FontSize(10).Foreground(Brushes.Gray).Center()
+                                            .Bind(TextBlock.TextProperty, "Name")
                                     )
                                 )
-                                .Background(Transparent)
+                                .Background(Brushes.Transparent)
                                 .BorderThickness(0)
                                 .Margin(5)
-                                .Command(vm.LaunchAppCommand)
-                                .CommandParameter(tool)
+                                .Command(Binding("DataContext.LaunchAppCommand", RelativeSource: RelativeSource(typeof(Window))))
+                                .CommandParameter(Binding("."))
                             )),
 
                         // U-Disk Monitor Section
                         ItemsControl()
+                            .Grid_Row(3)
                             .Bind(ItemsControl.ItemsSourceProperty, nameof(vm.Disks))
-                            .ItemTemplate(DataTemplate<DiskItem>(disk =>
+                            .ItemTemplate(DataTemplate(() =>
                                 Grid(
                                     Columns(50, Star, 80),
                                     // Icon
-                                    TextBlock("💾").FontSize(20).Center().Foreground(White),
+                                    TextBlock("💾").FontSize(20).Center().Foreground(Brushes.White),
                                     
                                     // Info
                                     VStack(
-                                        TextBlock().Foreground(White).Bind(TextBlock.TextProperty, nameof(disk.Label)),
-                                        TextBlock().Foreground(Gray).FontSize(10)
-                                            .Bind(TextBlock.TextProperty, binding => binding.Path(nameof(disk.FreeSpace)).StringFormat("剩余 {0}"))
-                                    ).GridColumn(1).VCenter(),
+                                        TextBlock().Foreground(Brushes.White).Bind(TextBlock.TextProperty, "Label"),
+                                        TextBlock().Foreground(Brushes.Gray).FontSize(10)
+                                            .Bind(TextBlock.TextProperty, binding => binding.Path("FreeSpace").StringFormat("剩余 {0}"))
+                                    ).Grid_Column(1).VCenter(),
 
                                     // Actions
                                     HStack(
                                         Button("打开").FontSize(10).Padding(5,2)
-                                            .Command(vm.OpenDiskCommand)
-                                            .CommandParameter(disk.DriveLetter)
-                                    ).GridColumn(2).Center()
+                                            .Command(Binding("DataContext.OpenDiskCommand", RelativeSource: RelativeSource(typeof(Window))))
+                                            .CommandParameter(Binding("DriveLetter"))
+                                    ).Grid_Column(2).Center()
                                 )
                                 .Margin(0, 10, 0, 10)
                                 .Background(new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)))
@@ -442,56 +449,57 @@ namespace SeewoLauncher
                             )),
 
                         // Apps Header
-                        TextBlock("常用应用").Foreground(Gray).Margin(0, 20, 0, 10),
+                        TextBlock("常用应用").Grid_Row(4).Foreground(Brushes.Gray).Margin(0, 20, 0, 10),
 
                         // Apps List
                         ItemsControl()
+                            .Grid_Row(5)
                             .Bind(ItemsControl.ItemsSourceProperty, nameof(vm.Apps))
                             .ItemsPanel(
                                 ItemsPanelTemplate(() => WrapPanel().IsItemsHost(true))
                             )
-                            .ItemTemplate(DataTemplate<AppItem>(app =>
+                            .ItemTemplate(DataTemplate(() =>
                                 Button(
                                     VStack(
                                         Border(
-                                            TextBlock("EN").Foreground(White).Center()
+                                            TextBlock("EN").Foreground(Brushes.White).Center()
                                         )
                                         .Width(40).Height(40)
-                                        .Background(Color.FromRgb(0, 180, 100))
+                                        .Background(new SolidColorBrush(Color.FromRgb(0, 180, 100)))
                                         .CornerRadius(5)
                                         .Margin(0,0,0,5),
                                         
-                                        TextBlock().Foreground(White).FontSize(10).Center().TextWrapping(TextWrapping.Wrap)
-                                            .Bind(TextBlock.TextProperty, nameof(app.Name))
+                                        TextBlock().Foreground(Brushes.White).FontSize(10).Center().TextWrapping(TextWrapping.Wrap)
+                                            .Bind(TextBlock.TextProperty, "Name")
                                     )
                                 )
                                 .Width(60).Height(70)
-                                .Background(Transparent)
+                                .Background(Brushes.Transparent)
                                 .BorderThickness(0)
                                 .Margin(5)
-                                .Command(vm.LaunchAppCommand)
-                                .CommandParameter(app)
+                                .Command(Binding("DataContext.LaunchAppCommand", RelativeSource: RelativeSource(typeof(Window))))
+                                .CommandParameter(Binding("."))
                             )),
                         
-                        Spacer(),
+                        // Spacer (Handled by Row Definition Star)
 
                         // Bottom Actions
                         DockPanel(
                             Button("一键下课")
-                                .DockPanelDock(Dock.Left)
+                                .DockPanel_Dock(Dock.Left)
                                 .Height(40)
-                                .Background(Transparent)
-                                .Foreground(White)
-                                .BorderBrush(Gray)
+                                .Background(Brushes.Transparent)
+                                .Foreground(Brushes.White)
+                                .BorderBrush(Brushes.Gray)
                                 .BorderThickness(1)
                                 .Invoke(b => b.Click += (s, e) => Application.Current.Shutdown())
-                        )
+                        ).Grid_Row(7)
                     )
                     .Padding(20)
-                    .Background(new SolidColorBrush(Color.FromArgb(200, 30, 30, 30))) // Glass-like dark
+                    .Background(new SolidColorBrush(Color.FromArgb(200, 30, 30, 30)))
                     .CornerRadius(20, 0, 0, 20)
                     .Margin(0, 40, 0, 40)
-                ).GridColumn(1)
+                ).Grid_Column(1)
             );
         }
     }
